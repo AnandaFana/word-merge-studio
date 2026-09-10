@@ -1,0 +1,17 @@
+node_modules/
+.npm-cache/
+dist/
+*.log
+*.tsbuildinfo
+.qa/
+*.docx
+*.doc
+*.docm
+*.pdf
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.DS_Store
+Thumbs.db
