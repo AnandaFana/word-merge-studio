@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import JSZip from 'jszip';
-import { readFileSync, readdirSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { compareSamples } from './localSamples';
 import {
   readWord,
   compareWords,
@@ -217,7 +218,7 @@ describe('OOXML merge contract', () => {
 });
 
 describe('local user documents (optional, never bundled into the app)', () => {
-  const names = readdirSync('.').filter((n) => n.endsWith('.docx'));
+  const names = compareSamples;
   it.skipIf(names.length !== 2)(
     'merges both directions with complete text and package preservation',
     async () => {

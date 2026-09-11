@@ -55,7 +55,7 @@ function download(bytes: Uint8Array, name: string, type: string, retain = false)
   return url;
 }
 
-export default function App() {
+export default function App({ embedded = false }: { embedded?: boolean }) {
   const [files, setFiles] = useState<Partial<Record<Side, WordFile>>>({});
   const [plan, setPlan] = useState<Plan>({ base: 'left', choices: {} });
   const [history, setHistory] = useState<Plan[]>([]);
@@ -241,23 +241,25 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <header className="topbar">
-        <div className="brand">
-          <span className="brand-mark">
-            <GitMerge size={22} />
-          </span>
-          <strong>Word Merge</strong>
-          <span className="edition">本地工作台</span>
-        </div>
-        <div className="topbar-right">
-          <span className="privacy">
-            <span /> 文件只在本机处理
-          </span>
-          <button className="icon-button" onClick={() => setHelp(true)} aria-label="使用说明">
-            <HelpCircle size={19} />
-          </button>
-        </div>
-      </header>
+      {!embedded && (
+        <header className="topbar">
+          <div className="brand">
+            <span className="brand-mark">
+              <GitMerge size={22} />
+            </span>
+            <strong>Word Merge</strong>
+            <span className="edition">本地工作台</span>
+          </div>
+          <div className="topbar-right">
+            <span className="privacy">
+              <span /> 文件只在本机处理
+            </span>
+            <button className="icon-button" onClick={() => setHelp(true)} aria-label="使用说明">
+              <HelpCircle size={19} />
+            </button>
+          </div>
+        </header>
+      )}
       <main>
         <div className="page-heading">
           <div>
@@ -267,6 +269,12 @@ export default function App() {
             </h1>
             <p>并排查看差异，逐项选择内容，让格式跟随同一份底稿。</p>
           </div>
+          {embedded && (
+            <button className="button subtle" onClick={() => setHelp(true)}>
+              <HelpCircle size={17} />
+              使用说明
+            </button>
+          )}
           <button className="button subtle" onClick={demo} disabled={!!busy}>
             <FileText size={16} /> 体验示例
           </button>

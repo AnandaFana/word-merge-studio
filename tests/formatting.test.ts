@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import JSZip from 'jszip';
 import { readWord, compareWords, mergeWords, type Plan, type WordFile } from '../src/engine';
 import { formatIssue, formatSummary } from '../src/formatting';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { compareSamples } from './localSamples';
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const run = (t: string, pr = '') => `<w:r>${pr ? `<w:rPr>${pr}</w:rPr>` : ''}<w:t>${t}</w:t></w:r>`;
 const p = (t: string, pr = '', pp = '') => `<w:p><w:pPr>${pp}</w:pPr>${run(t, pr)}</w:p>`;
@@ -194,7 +195,7 @@ describe('independent paragraph formatting', () => {
     expect(attrs(out, 'shd', 'fill')).toEqual(['AAAAAA']);
     expect(attrs(out, 'tblW', 'w')).toEqual(['9000']);
   });
-  const samples = readdirSync('.').filter((n) => n.endsWith('.docx'));
+  const samples = compareSamples;
   it.skipIf(samples.length !== 2)(
     'normalizes actual user documents in both directions without changing selected text or non-body parts',
     async () => {

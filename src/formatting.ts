@@ -62,7 +62,7 @@ function styleChain(file: WordFile, id: string, type = 'paragraph'): Element[] {
   return chain;
 }
 
-function paragraphProps(file: WordFile, p: Element): Element {
+export function paragraphProps(file: WordFile, p: Element): Element {
   const defaults = file.styles ? all(file.styles, 'pPrDefault')[0] : undefined;
   return cascade(file.xml, 'pPr', [
     child(defaults, 'pPr'),
@@ -71,7 +71,7 @@ function paragraphProps(file: WordFile, p: Element): Element {
   ]);
 }
 
-function themeFonts(file: WordFile, props: Element): void {
+export function themeFonts(file: WordFile, props: Element): void {
   const fonts = child(props, 'rFonts');
   for (const script of fonts ? ['ascii', 'hAnsi', 'eastAsia', 'cs'] : []) {
     const theme = fonts!.getAttributeNS(W, `${script}Theme`);
@@ -143,7 +143,7 @@ function themeFonts(file: WordFile, props: Element): void {
   }
 }
 
-function runProps(file: WordFile, p: Element, run?: Element): Element {
+export function runProps(file: WordFile, p: Element, run?: Element): Element {
   const defaults = file.styles ? all(file.styles, 'rPrDefault')[0] : undefined;
   const pStyles = styleChain(file, val(child(child(p, 'pPr'), 'pStyle')));
   const rStyles = styleChain(file, val(child(child(run, 'rPr'), 'rStyle')), 'character');
@@ -159,7 +159,7 @@ function runProps(file: WordFile, p: Element, run?: Element): Element {
 }
 
 const dominantRuns = new WeakMap<WordFile, WeakMap<Element, Element>>();
-function dominantRun(file: WordFile, p: Element): Element {
+export function dominantRun(file: WordFile, p: Element): Element {
   let cache = dominantRuns.get(file);
   if (!cache) {
     cache = new WeakMap();
