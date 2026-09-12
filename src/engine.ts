@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import JSZip from 'jszip';
 import { diffArrays, diffChars } from 'diff';
 import { normalizeBlock, formatIssue, effectiveFormat } from './formatting';
@@ -49,9 +50,10 @@ const descendant = (el: Element, name: string) => Array.from(el.getElementsByTag
 const first = (el: Element, name: string) => children(el, name)[0];
 
 function parseXML(value: string): Document {
-  if (/<!DOCTYPE|<!ENTITY/i.test(value)) throw new Error('文档包含不支持的 XML 实体声明。');
+  if (/<!DOCTYPE|<!ENTITY/i.test(value)) throw new Error(t('文档包含不支持的 XML 实体声明。'));
   const xml = new DOMParser().parseFromString(value, 'application/xml');
-  if (xml.getElementsByTagName('parsererror').length) throw new Error('Word XML 损坏，无法读取。');
+  if (xml.getElementsByTagName('parsererror').length)
+    throw new Error(t('Word XML 损坏，无法读取。'));
   return xml;
 }
 
@@ -136,17 +138,17 @@ function fingerprint(el: Element): string {
 
 export async function readWord(name: string, data: ArrayBuffer | Uint8Array): Promise<WordFile> {
   if (!/\.docx$/i.test(name))
-    throw new Error('请使用 .docx 文件；旧版 .doc 请先在 Word 中另存为 .docx。');
+    throw new Error(t('请使用 .docx 文件；旧版 .doc 请先在 Word 中另存为 .docx。'));
   const bytes = new Uint8Array(data);
-  if (bytes.byteLength > MAX_FILE) throw new Error('单个文件不能超过 25 MB。');
+  if (bytes.byteLength > MAX_FILE) throw new Error(t('单个文件不能超过 25 MB。'));
   let zip: JSZip;
   try {
     zip = await JSZip.loadAsync(bytes);
   } catch {
-    throw new Error('无法打开 DOCX：文件可能已损坏、加密，或不是真正的 .docx。');
+    throw new Error(t('无法打开 DOCX：文件可能已损坏、加密，或不是真正的 .docx。'));
   }
   const entries = Object.values(zip.files);
-  if (entries.length > 5000) throw new Error('文档附件数量超过支持范围。');
+  if (entries.length > 5000) throw new Error(t('文档附件数量超过支持范围。'));
   // JSZip exposes the central-directory uncompressed sizes before inflation.
   let expanded = 0;
   for (const entry of entries) {
@@ -154,19 +156,20 @@ export async function readWord(name: string, data: ArrayBuffer | Uint8Array): Pr
       (entry as unknown as { _data?: { uncompressedSize?: number } })._data?.uncompressedSize ?? 0;
     expanded += size;
     if (size > MAX_EXPANDED || expanded > MAX_EXPANDED)
-      throw new Error('文档解压后超过 100 MB，请拆分后再试。');
+      throw new Error(t('文档解压后超过 100 MB，请拆分后再试。'));
   }
   if (entries.some((e) => /vbaProject|_xmlsignatures/i.test(e.name)))
-    throw new Error('不支持带宏或数字签名的文档，请使用普通 .docx 副本。');
+    throw new Error(t('不支持带宏或数字签名的文档，请使用普通 .docx 副本。'));
   const main = zip.file(MAIN);
-  if (!main || !zip.file('[Content_Types].xml')) throw new Error('缺少必要的 Word 文件结构。');
+  if (!main || !zip.file('[Content_Types].xml')) throw new Error(t('缺少必要的 Word 文件结构。'));
   const xml = parseXML(await main.async('string'));
   const body = xml.getElementsByTagNameNS(W, 'body')[0];
-  if (!body) throw new Error('目前仅支持常见的 Transitional DOCX，请在 Word 中另存为普通 .docx。');
+  if (!body)
+    throw new Error(t('目前仅支持常见的 Transitional DOCX，请在 Word 中另存为普通 .docx。'));
   const elements = Array.from(body.children).filter(
     (el) => !(el.namespaceURI === W && el.localName === 'sectPr'),
   );
-  if (elements.length > 2500) throw new Error('第一版最多支持 2500 个正文块，请拆分文档。');
+  if (elements.length > 2500) throw new Error(t('第一版最多支持 2500 个正文块，请拆分文档。'));
   const blocks = elements.map(
     (element, index): Block => ({
       index,
@@ -181,7 +184,7 @@ export async function readWord(name: string, data: ArrayBuffer | Uint8Array): Pr
     blocks.some((b) => b.text.length > 20000) ||
     blocks.reduce((n, b) => n + b.text.length, 0) > 500000
   )
-    throw new Error('正文超出本版本的对比规模限制。');
+    throw new Error(t('正文超出本版本的对比规模限制。'));
   const warnings: string[] = [];
   const locked = [
     'fldChar',
@@ -195,15 +198,22 @@ export async function readWord(name: string, data: ArrayBuffer | Uint8Array): Pr
   ].some((tag) => xml.getElementsByTagNameNS(W, tag).length > 0);
   if (locked)
     warnings.push(
-      '含修订、跨段域、书签或批注范围：本版仅允许原样导出此文档，请先在 Word 的副本中处理这些结构。',
+      t(
+        '含修订、跨段域、书签或批注范围：本版仅允许原样导出此文档，请先在 Word 的副本中处理这些结构。',
+      ),
     );
   const complex = blocks.filter((b) => !b.safe).length;
   if (complex)
     warnings.push(
-      `${complex} 个正文块含图片、公式、链接、分节或其他复杂结构；可以保留底稿中的原块，暂不支持跨侧合入这些块。`,
+      t(
+        '{0} 个正文块含图片、公式、链接、分节或其他复杂结构；可以保留底稿中的原块，暂不支持跨侧合入这些块。',
+        complex,
+      ),
     );
   warnings.push(
-    '页眉页脚、页面设置、样式定义和其他非正文部分始终使用格式基准；差异列表只比较正文，不比较这些部分。',
+    t(
+      '页眉页脚、页面设置、样式定义和其他非正文部分始终使用格式基准；差异列表只比较正文，不比较这些部分。',
+    ),
   );
   const stylesText = await zip.file('word/styles.xml')?.async('string');
   const themeText = await zip.file('word/theme/theme1.xml')?.async('string');
@@ -226,7 +236,7 @@ export function compareWords(left: WordFile, right: WordFile): Row[] {
     comparator: (a, b) => key(a) === key(b),
     timeout: 2000,
   });
-  if (!diffs) throw new Error('对比超时，请拆分文档后重试。');
+  if (!diffs) throw new Error(t('对比超时，请拆分文档后重试。'));
   const rows: Row[] = [];
   const push = (l?: Block, r?: Block) => {
     let kind: Kind = !l
@@ -288,20 +298,20 @@ export function choiceIssue(
 ): string | undefined {
   if (choice === base) return;
   if (files[base].locked || files[base === 'left' ? 'right' : 'left'].locked)
-    return '存在跨段域、修订或批注范围，请先处理源文档。';
+    return t('存在跨段域、修订或批注范围，请先处理源文档。');
   const target = row[base];
-  if (target && !target.safe) return '底稿此块含复杂结构，本版仅支持原样保留。';
+  if (target && !target.safe) return t('底稿此块含复杂结构，本版仅支持原样保留。');
   if (choice === 'omit') return;
   const sources = choice === 'both' ? [row.left, row.right] : [row[choice]];
   for (const source of sources) {
     if (!source || source === target) continue;
-    if (!source.safe) return '此块含图片、公式、链接或其他复杂结构，暂不支持跨侧合入。';
+    if (!source.safe) return t('此块含图片、公式、链接或其他复杂结构，暂不支持跨侧合入。');
     if (
       source.type === 'tbl' &&
       (!target || target.type !== 'tbl' || topology(source.element) !== topology(target.element))
     )
-      return '表格需要两侧行列、合并单元格及段落结构一致；结构变化请在 Word 中处理。';
-    if (target && source.type !== target.type) return '段落与表格互换暂不支持。';
+      return t('表格需要两侧行列、合并单元格及段落结构一致；结构变化请在 Word 中处理。');
+    if (target && source.type !== target.type) return t('段落与表格互换暂不支持。');
   }
 }
 
@@ -340,7 +350,7 @@ function patchParagraph(base: Element, value: string): Element {
   };
   for (const child of Array.from(result.children)) if (child.localName !== 'pPr') child.remove();
   const changes = diffChars(textOf(base), value, { timeout: 1000 });
-  if (!changes) throw new Error('段落字符对比超时，请缩短该段落后重试。');
+  if (!changes) throw new Error(t('段落字符对比超时，请缩短该段落后重试。'));
   offset = 0;
   let replacementStart: number | undefined;
   for (const change of changes) {
@@ -446,11 +456,11 @@ export async function mergeWords(
   for (const row of rows) {
     const choice = plan.choices[row.id] ?? plan.base;
     const issue = choiceIssue(row, choice, plan.base, files);
-    if (issue) throw new Error(`第 ${rows.indexOf(row) + 1} 块：${issue}`);
+    if (issue) throw new Error(t('第 {0} 块：{1}', rows.indexOf(row) + 1, issue));
     const format = effectiveFormat(row, plan);
     const styleIssue = formatIssue(row, format, files, plan.base);
     if (choice !== 'omit' && styleIssue)
-      throw new Error(`第 ${rows.indexOf(row) + 1} 块格式：${styleIssue}`);
+      throw new Error(t('第 {0} 块格式：{1}', rows.indexOf(row) + 1, styleIssue));
     const selected =
       choice === 'omit' ? [] : choice === 'both' ? [row.left, row.right] : [row[choice]];
     for (const block of selected) {

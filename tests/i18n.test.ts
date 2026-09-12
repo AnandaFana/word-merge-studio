@@ -1,0 +1,22 @@
+import { afterEach, expect, it } from 'vitest';
+import { setLanguage, t } from '../src/i18n';
+import { readWord } from '../src/engine';
+import { createSectionDemo } from '../src/sectionDemo';
+import { createChapter, typeLabel } from '../src/chapterOutline';
+import { groupSections } from '../src/sections';
+afterEach(() => setLanguage('zh'));
+it('switches labels and errors while preserving document text and grouping', async () => {
+  const bytes = await createSectionDemo('garden');
+  setLanguage('zh');
+  const zh = createChapter(await readWord('sample.docx', bytes));
+  expect(typeLabel(1)).toBe('1 级标题');
+  setLanguage('en');
+  expect(typeLabel(1)).toBe('Heading 1');
+  expect(t('第 {0} 块：{1}', 2, 'example')).toBe('Block 2: example');
+  expect(localStorage.getItem('word-merge-language')).toBe('en');
+  expect(document.documentElement.lang).toBe('en');
+  const en = createChapter(await readWord('sample.docx', bytes));
+  expect(en.file.blocks.map((b) => b.text)).toEqual(zh.file.blocks.map((b) => b.text));
+  expect(groupSections([en]).map((g) => g.title)).toEqual(groupSections([zh]).map((g) => g.title));
+  await expect(readWord('sample.doc', bytes)).rejects.toThrow('Use .docx');
+});

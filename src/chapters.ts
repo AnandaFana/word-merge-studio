@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import JSZip from 'jszip';
 import { themeFonts, paragraphProps, runProps } from './formatting';
 import {
@@ -23,9 +24,9 @@ const CT = 'http://schemas.openxmlformats.org/package/2006/content-types';
 const MC = 'http://schemas.openxmlformats.org/markup-compatibility/2006';
 const MAIN = 'word/document.xml';
 const xml = (text: string) => {
-  if (/<!DOCTYPE|<!ENTITY/i.test(text)) throw new Error('附件包含不支持的 XML 实体声明。');
+  if (/<!DOCTYPE|<!ENTITY/i.test(text)) throw new Error(t('附件包含不支持的 XML 实体声明。'));
   const doc = new DOMParser().parseFromString(text, 'application/xml');
-  if (doc.getElementsByTagName('parsererror').length) throw new Error('文档附件 XML 损坏。');
+  if (doc.getElementsByTagName('parsererror').length) throw new Error(t('文档附件 XML 损坏。'));
   return doc;
 };
 const serial = (node: Node) => new XMLSerializer().serializeToString(node);
@@ -36,7 +37,7 @@ function copyNamespaces(source: Element, target: Element) {
       if (a.name === 'xmlns') continue;
       const existing = target.getAttribute(a.name);
       if (existing && existing !== a.value)
-        throw new Error('章节间存在冲突的 XML 命名空间，请在 Word 中统一另存格式。');
+        throw new Error(t('章节间存在冲突的 XML 命名空间，请在 Word 中统一另存格式。'));
       target.setAttributeNS(a.namespaceURI, a.name, a.value);
     }
   const ignorable = [
@@ -61,17 +62,17 @@ const resolve = (part: string, target: string) => {
   try {
     decoded = decodeURI(target);
   } catch {
-    throw new Error('附件路径编码损坏。');
+    throw new Error(t('附件路径编码损坏。'));
   }
   if (/[\\?#]/.test(decoded) || /^[a-z]+:/i.test(decoded))
-    throw new Error('不支持的内部附件路径。');
+    throw new Error(t('不支持的内部附件路径。'));
   const path = decoded.startsWith('/')
     ? decoded.slice(1)
     : part.slice(0, part.lastIndexOf('/') + 1) + decoded;
   const stack: string[] = [];
   for (const segment of path.split('/')) {
     if (segment === '..') {
-      if (!stack.length) throw new Error('附件路径超出文档范围。');
+      if (!stack.length) throw new Error(t('附件路径超出文档范围。'));
       stack.pop();
     } else if (segment && segment !== '.') stack.push(segment);
   }
@@ -80,23 +81,23 @@ const resolve = (part: string, target: string) => {
 export function chapterIssues(chapter: Chapter): string[] {
   const root = chapter.file.xml;
   const unsupported: [string, string][] = [
-    ['footnoteReference', '脚注'],
-    ['endnoteReference', '尾注'],
-    ['commentReference', '批注'],
-    ['commentRangeStart', '批注'],
-    ['ins', '修订'],
-    ['del', '修订'],
-    ['moveFrom', '移动修订'],
-    ['moveTo', '移动修订'],
-    ['fldChar', '域（例如自动目录或交叉引用）'],
-    ['fldSimple', '域'],
-    ['altChunk', '嵌入文档'],
-    ['object', '嵌入对象'],
-    ['pict', '旧式 VML 图形'],
-    ['sdt', '内容控件'],
-    ['subDoc', '子文档'],
-    ['customXml', '自定义 XML 正文'],
-    ['permStart', '受保护范围'],
+    ['footnoteReference', t('脚注')],
+    ['endnoteReference', t('尾注')],
+    ['commentReference', t('批注')],
+    ['commentRangeStart', t('批注')],
+    ['ins', t('修订')],
+    ['del', t('修订')],
+    ['moveFrom', t('移动修订')],
+    ['moveTo', t('移动修订')],
+    ['fldChar', t('域（例如自动目录或交叉引用）')],
+    ['fldSimple', t('域')],
+    ['altChunk', t('嵌入文档')],
+    ['object', t('嵌入对象')],
+    ['pict', t('旧式 VML 图形')],
+    ['sdt', t('内容控件')],
+    ['subDoc', t('子文档')],
+    ['customXml', t('自定义 XML 正文')],
+    ['permStart', t('受保护范围')],
   ];
   return [
     ...new Set(unsupported.filter(([tag]) => all(root, tag).length).map(([, label]) => label)),
@@ -105,9 +106,9 @@ export function chapterIssues(chapter: Chapter): string[] {
 export function chapterWarnings(chapter: Chapter): string[] {
   const warnings: string[] = [];
   if (all(chapter.file.xml, 'sectPr').length > 1)
-    warnings.push('文档内有分节；合并后按首章页面设置排版。');
+    warnings.push(t('文档内有分节；合并后按首章页面设置排版。'));
   if (all(chapter.file.xml, 'drawing').length)
-    warnings.push('图片会复制；浮动位置、图表主题及分页请在 Word 中核对。');
+    warnings.push(t('图片会复制；浮动位置、图表主题及分页请在 Word 中核对。'));
   return warnings;
 }
 
@@ -116,28 +117,33 @@ export async function mergeChapters(
   chapters: Chapter[],
   options: ChapterOptions,
 ): Promise<Uint8Array> {
-  if (!chapters.length) throw new Error('请先添加章节文档。');
+  if (!chapters.length) throw new Error(t('请先添加章节文档。'));
   if (
     chapters.length > 20 ||
     chapters.reduce((n, c) => n + c.file.bytes.length, 0) > 100 * 1024 * 1024
   )
-    throw new Error('最多合并 20 份文件，总大小不超过 100 MB。');
+    throw new Error(t('最多合并 20 份文件，总大小不超过 100 MB。'));
   let expanded = 0;
   for (const chapter of chapters) {
     const issues = chapterIssues(chapter);
     if (issues.length)
       throw new Error(
-        `${chapter.file.name} 含${issues.join('、')}；请在 Word 副本中处理这些内容后再添加。`,
+        t(
+          '{0} 含{1}；请在 Word 副本中处理这些内容后再添加。',
+          chapter.file.name,
+          issues.join('、'),
+        ),
       );
     for (const part of Object.values(chapter.file.zip.files))
       expanded +=
         (part as unknown as { _data?: { uncompressedSize?: number } })._data?.uncompressedSize ?? 0;
   }
-  if (expanded > 250 * 1024 * 1024) throw new Error('所有文档解压后超过 250 MB，请分批合并。');
+  if (expanded > 250 * 1024 * 1024) throw new Error(t('所有文档解压后超过 250 MB，请分批合并。'));
   if (chapters.reduce((n, c) => n + c.outline.length, 0) > 10000)
-    throw new Error('总段落数超过 10000，请分批合并。');
+    throw new Error(t('总段落数超过 10000，请分批合并。'));
   for (const [level, f] of Object.entries(options.formats)) {
-    if (options.mode !== 'unified' || !f.enabled) continue;
+    const generated = options.assembly?.some((e) => 'title' in e && e.level === Number(level));
+    if (options.mode === 'unified' ? !f.enabled : !generated) continue;
     if (
       !f.font.trim() ||
       f.font.length > 80 ||
@@ -156,7 +162,10 @@ export async function mergeChapters(
       f.indent > 4
     )
       throw new Error(
-        `${typeLabel(Number(level))}的字体或排版参数无效。字号 5–72 pt（半点步进），行距 1–3，段后 0–72 pt，缩进 0–4 字。`,
+        t(
+          '{0}的字体或排版参数无效。字号 5–72 pt（半点步进），行距 1–3，段后 0–72 pt，缩进 0–4 字。',
+          typeLabel(Number(level)),
+        ),
       );
   }
   const zip = new JSZip();
@@ -193,6 +202,7 @@ export async function mergeChapters(
   addRel(R + '/styles', 'styles.xml');
   addRel(R + '/numbering', 'numbering.xml');
   let finalSection: Element | undefined;
+  const assembledBlocks = new Map<string, Element>();
   for (let ci = 0; ci < chapters.length; ci++) {
     const chapter = chapters[ci],
       file = chapter.file,
@@ -275,7 +285,7 @@ export async function mergeChapters(
           }
           if (tag === 'numId') {
             const id = numMap.get(value(n));
-            if (!id) throw new Error(`${file.name} 的列表编号定义缺失。`);
+            if (!id) throw new Error(t('{0} 的列表编号定义缺失。', file.name));
             n.setAttributeNS(W, 'w:val', id);
           }
           if (tag === 'abstractNumId')
@@ -322,7 +332,7 @@ export async function mergeChapters(
     const importPart = async (path: string): Promise<string> => {
       if (copied.has(path)) return copied.get(path)!;
       const part = file.zip.file(path);
-      if (!part) throw new Error(`${file.name} 的附件缺失：${path}`);
+      if (!part) throw new Error(t('{0} 的附件缺失：{1}', file.name, path));
       const target = `word/chapters/c${ci}/${path}`;
       copied.set(path, target);
       addType(target, typeFor(path));
@@ -338,7 +348,7 @@ export async function mergeChapters(
         for (const r of Array.from(rs.documentElement.children)) {
           if (r.getAttribute('TargetMode') === 'External') {
             if (r.getAttribute('Type') !== R + '/hyperlink')
-              throw new Error('附件包含外链资源，请在 Word 中将其嵌入后再合并。');
+              throw new Error(t('附件包含外链资源，请在 Word 中将其嵌入后再合并。'));
           } else
             r.setAttribute(
               'Target',
@@ -353,11 +363,11 @@ export async function mergeChapters(
     const importMainRel = async (id: string) => {
       if (relMap.has(id)) return relMap.get(id)!;
       const r = relationById.get(id);
-      if (!r) throw new Error(`${file.name} 包含无效的附件关系。`);
+      if (!r) throw new Error(t('{0} 包含无效的附件关系。', file.name));
       const type = r.getAttribute('Type')!,
         external = r.getAttribute('TargetMode') === 'External';
       if (external && type !== R + '/hyperlink')
-        throw new Error('存在外链图片，请在 Word 中将图片嵌入后再合并。');
+        throw new Error(t('存在外链图片，请在 Word 中将图片嵌入后再合并。'));
       if (
         ![
           'image',
@@ -371,7 +381,7 @@ export async function mergeChapters(
           'diagramColors',
         ].includes(type.split('/').pop()!)
       )
-        throw new Error(`暂不支持这种正文附件：${type.split('/').pop()}。`);
+        throw new Error(t('暂不支持这种正文附件：{0}。', type.split('/').pop()));
       const target = external
         ? r.getAttribute('Target')!
         : '/' + (await importPart(resolve(MAIN, r.getAttribute('Target')!)));
@@ -387,7 +397,7 @@ export async function mergeChapters(
     // No document-wide default from one source is allowed to leak into another chapter.
     for (const type of ['paragraph', 'character', 'table']) {
       const root = make(styles, 'style', { type, styleId: prefix + `Default${type}` });
-      root.appendChild(make(styles, 'name', { val: `章节 ${ci + 1} 默认 ${type}` }));
+      root.appendChild(make(styles, 'name', { val: t('章节 {0} 默认 {1}', ci + 1, type) }));
       const pp = stylesSource ? child(all(stylesSource, 'pPrDefault')[0], 'pPr') : undefined;
       const rp = stylesSource ? child(all(stylesSource, 'rPrDefault')[0], 'rPr') : undefined;
       if (type === 'paragraph' && pp) root.appendChild(pp.cloneNode(true));
@@ -404,7 +414,7 @@ export async function mergeChapters(
       s.setAttributeNS(W, 'w:styleId', styleMap.get(value(source, 'styleId'))!);
       s.removeAttributeNS(W, 'default');
       const name = child(s, 'name');
-      if (name) name.setAttributeNS(W, 'w:val', `章节 ${ci + 1} · ${value(name)}`);
+      if (name) name.setAttributeNS(W, 'w:val', t('章节 {0} · {1}', ci + 1, value(name)));
       rewrite(s);
       if (!child(s, 'basedOn') && ['paragraph', 'character', 'table'].includes(value(s, 'type'))) {
         const based = make(styles, 'basedOn', { val: prefix + `Default${value(s, 'type')}` });
@@ -427,7 +437,7 @@ export async function mergeChapters(
       const numberRelMap = new Map<string, string>();
       for (const r of nrs ? Array.from(nrs.documentElement.children) : []) {
         if (r.getAttribute('TargetMode') === 'External')
-          throw new Error('不支持外链图片项目符号。');
+          throw new Error(t('不支持外链图片项目符号。'));
         const copy = r.cloneNode(true) as Element,
           id = prefix + r.getAttribute('Id');
         numberRelMap.set(r.getAttribute('Id')!, id);
@@ -519,7 +529,7 @@ export async function mergeChapters(
     }
 
     all(container, 'sectPr').forEach((s) => s.remove());
-    if (options.mode === 'unified')
+    if (options.mode === 'unified' || options.assembly)
       copyPs.forEach((p, i) => {
         // Edit detached paragraphs so XML DOM implementations do not repeatedly invalidate
         // live collections for the entire chapter on every run-property mutation.
@@ -528,12 +538,22 @@ export async function mergeChapters(
         unifyParagraph(
           p,
           levelOf(chapter, chapter.outline[i]),
-          options.formats[levelOf(chapter, chapter.outline[i])],
+          options.mode === 'unified'
+            ? options.formats[levelOf(chapter, chapter.outline[i])]
+            : undefined,
         );
         placeholder.replaceWith(p);
       });
-    await remapBodyRels(container);
-    if (ci > 0 && options.pageBreak) {
+    if (options.assembly) {
+      const selected = new Set(
+        options.assembly.flatMap((e) =>
+          'chapterId' in e && e.chapterId === chapter.id ? [e.blockIndex] : [],
+        ),
+      );
+      for (const [bi, block] of Array.from(container.children).entries())
+        if (selected.has(bi)) await remapBodyRels(block);
+    } else await remapBodyRels(container);
+    if (ci > 0 && options.pageBreak && !options.assembly) {
       const first = container.firstElementChild;
       if (first?.namespaceURI === W && first.localName === 'p') {
         const pp = child(first, 'pPr') ?? make(main, 'pPr');
@@ -551,7 +571,10 @@ export async function mergeChapters(
         body.appendChild(breakP);
       }
     }
-    Array.from(container.children).forEach((e) => body.appendChild(e));
+    Array.from(container.children).forEach((e, bi) => {
+      assembledBlocks.set(`${chapter.id}:${bi}`, e);
+      if (!options.assembly) body.appendChild(e);
+    });
     if (ci === 0) {
       const section = child(all(file.xml, 'body')[0], 'sectPr');
       if (section) {
@@ -591,6 +614,44 @@ export async function mergeChapters(
       );
     }
   }
+  if (options.assembly) {
+    const used = new Set<string>();
+    let groupCount = 0;
+    for (const entry of options.assembly) {
+      if ('chapterId' in entry) {
+        const key = `${entry.chapterId}:${entry.blockIndex}`;
+        const block = assembledBlocks.get(key);
+        if (!block || used.has(key)) throw new Error(t('章节布局包含无效或重复的内容块。'));
+        used.add(key);
+        body.appendChild(block);
+      } else {
+        if (!entry.title.trim() || ![1, 2, 3].includes(entry.level))
+          throw new Error(t('章节标题或级别无效。'));
+        const p = make(main, 'p'),
+          r = make(main, 'r'),
+          textNode = make(main, 't');
+        textNode.textContent = entry.title;
+        r.appendChild(textNode);
+        p.appendChild(r);
+        const f = options.formats[entry.level];
+        // Generated headings use default typography if this type is unchecked.
+        const props =
+          options.mode === 'unified' && !f.enabled
+            ? { pp: make(main, 'pPr'), rp: make(main, 'rPr') }
+            : formatProperties(main, entry.level, f);
+        put(props.pp, 'outlineLvl', { val: String(entry.level - 1) });
+        put(props.pp, 'keepNext', { val: '1' });
+        orderProps(props.pp);
+        p.insertBefore(props.pp, r);
+        r.insertBefore(props.rp, textNode);
+        if (entry.level === 1 && groupCount++ > 0 && options.pageBreak) {
+          put(props.pp, 'pageBreakBefore', { val: '1' });
+          orderProps(props.pp);
+        }
+        body.appendChild(p);
+      }
+    }
+  }
   if (options.mode === 'unified')
     for (const [level, f] of Object.entries(options.formats))
       if (f.enabled) {
@@ -599,7 +660,7 @@ export async function mergeChapters(
           styleId: `WMUnified${level}`,
           customStyle: '1',
         });
-        s.appendChild(make(styles, 'name', { val: `统一 · ${typeLabel(Number(level))}` }));
+        s.appendChild(make(styles, 'name', { val: t('统一 · {0}', typeLabel(Number(level))) }));
         s.appendChild(make(styles, 'qFormat'));
         const props = formatProperties(styles, Number(level), f);
         s.append(props.pp, props.rp);

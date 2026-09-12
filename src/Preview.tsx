@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import { useEffect, useRef, useState } from 'react';
 import { renderAsync } from 'docx-preview';
 
@@ -48,7 +49,7 @@ export default function Preview({ bytes, title }: { bytes: Uint8Array; title: st
           observer.observe(frame);
         }
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : '预览失败');
+        if (!cancelled) setError(e instanceof Error ? e.message : t('预览失败'));
       }
     };
     void run();
@@ -59,7 +60,13 @@ export default function Preview({ bytes, title }: { bytes: Uint8Array; title: st
   }, [bytes, ready]);
   return (
     <div className="preview-wrap">
-      {error && <div className="error">预览不可用：{error}。可继续查看差异列表。</div>}
+      {error && (
+        <div className="error">
+          {t('预览不可用：')}
+          {error}
+          {t('。可继续查看差异列表。')}
+        </div>
+      )}
       <iframe
         ref={ref}
         title={title}

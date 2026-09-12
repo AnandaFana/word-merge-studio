@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowDown,
@@ -41,7 +42,7 @@ export default function ChapterWorkspace() {
     [filter, setFilter] = useState('headings'),
     [page, setPage] = useState(0);
   const [active, setActive] = useState('');
-  const [name, setName] = useState('章节合并');
+  const [name, setName] = useState(t('章节合并'));
   const [preview, setPreview] = useState<Uint8Array>(),
     [saved, setSaved] = useState<{ url: string; name: string }>();
   const input = useRef<HTMLInputElement>(null);
@@ -106,7 +107,7 @@ export default function ChapterWorkspace() {
   );
   async function addFiles(files: File[]) {
     if (busy) return;
-    setBusy('正在读取章节…');
+    setBusy(t('正在读取章节…'));
     setError('');
     setNotice('');
     const added: Chapter[] = [],
@@ -116,18 +117,18 @@ export default function ChapterWorkspace() {
         a.name.localeCompare(b.name, 'zh-CN', { numeric: true }),
       )) {
         if (chapters.length + added.length >= 20) {
-          errors.push('最多添加 20 份文件。');
+          errors.push(t('最多添加 20 份文件。'));
           break;
         }
         if (f.size > 25 * 1024 * 1024) {
-          errors.push(`${f.name}：单个文件不能超过 25 MB。`);
+          errors.push(t('{0}：单个文件不能超过 25 MB。', f.name));
           continue;
         }
         if (
           chapters.concat(added).reduce((n, c) => n + c.file.bytes.length, 0) + f.size >
           100 * 1024 * 1024
         ) {
-          errors.push('总文件大小不能超过 100 MB。');
+          errors.push(t('总文件大小不能超过 100 MB。'));
           continue;
         }
         try {
@@ -142,13 +143,13 @@ export default function ChapterWorkspace() {
                   c.file.bytes.every((byte, i) => byte === data[i]),
               )
           ) {
-            errors.push(`${f.name} 的相同副本已在列表中，已跳过。`);
+            errors.push(t('{0} 的相同副本已在列表中，已跳过。', f.name));
             continue;
           }
           const c = createChapter(await readWord(f.name, data));
           const issues = chapterIssues(c);
           if (issues.length)
-            throw new Error(`含${issues.join('、')}，请在 Word 副本中处理后再添加。`);
+            throw new Error(t('含{0}，请在 Word 副本中处理后再添加。', issues.join('、')));
           added.push(c);
         } catch (e) {
           errors.push(`${f.name}：${e instanceof Error ? e.message : String(e)}`);
@@ -156,7 +157,7 @@ export default function ChapterWorkspace() {
       }
       if (added.length) {
         setChapters((old) => [...old, ...added]);
-        setNotice(`已添加 ${added.length} 章，按文件名排序。可用箭头调整最终顺序。`);
+        setNotice(t('已添加 {0} 章，按文件名排序。可用箭头调整最终顺序。', added.length));
       }
       setError(errors.join('\n'));
     } finally {
@@ -164,7 +165,7 @@ export default function ChapterWorkspace() {
     }
   }
   async function demo() {
-    setBusy('正在载入示例…');
+    setBusy(t('正在载入示例…'));
     setError('');
     try {
       const result = [];
@@ -172,14 +173,14 @@ export default function ChapterWorkspace() {
         result.push(
           createChapter(
             await readWord(
-              side === 'left' ? '01_方案初稿.docx' : '02_补充材料.docx',
+              side === 'left' ? t('01_方案初稿.docx') : t('02_补充材料.docx'),
               await createDemo(side),
             ),
           ),
         );
       setChapters(result);
       setMode('unified');
-      setNotice('已载入两份虚构示例。先检查大纲，再选择需要统一的类型。');
+      setNotice(t('已载入两份虚构示例。先检查大纲，再选择需要统一的类型。'));
     } catch (e) {
       setError(String(e));
     } finally {
@@ -218,14 +219,17 @@ export default function ChapterWorkspace() {
       }),
     );
     setNotice(
-      `已将同类识别结果设为“${typeLabel(level)}”。样式名称分组仅作用于当前章；编号模式分组作用于所有章。`,
+      t(
+        '已将同类识别结果设为“{0}”。样式名称分组仅作用于当前章；编号模式分组作用于所有章。',
+        typeLabel(level),
+      ),
     );
   }
   function updateFormat(level: number, patch: Partial<TypeFormat>) {
     setFormats((old) => ({ ...old, [level]: { ...old[level], ...patch } }));
   }
   async function exportFile(showPreview: boolean) {
-    setBusy(showPreview ? '正在生成预览…' : '正在合并并导出…');
+    setBusy(showPreview ? t('正在生成预览…') : t('正在合并并导出…'));
     setError('');
     try {
       const bytes = await mergeChapters(chapters, { mode, pageBreak, formats });
@@ -235,7 +239,7 @@ export default function ChapterWorkspace() {
           (name
             .trim()
             .replace(/[\\/:*?"<>|]/g, '_')
-            .replace(/\.docx$/i, '') || '章节合并') + '.docx';
+            .replace(/\.docx$/i, '') || t('章节合并')) + '.docx';
         const url = URL.createObjectURL(
           new Blob([bytes.slice().buffer], {
             type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -248,7 +252,7 @@ export default function ChapterWorkspace() {
         document.body.appendChild(a);
         a.click();
         a.remove();
-        setNotice('合并文件已生成。若浏览器没有自动保存，请点击下方“保存合并文件”。');
+        setNotice(t('合并文件已生成。若浏览器没有自动保存，请点击下方“保存合并文件”。'));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -262,12 +266,13 @@ export default function ChapterWorkspace() {
         <div>
           <div className="eyebrow">CHAPTERS TO DOCUMENT</div>
           <h1>
-            散落的章节，完整的文档<span>。</span>
+            {t('散落的章节，完整的文档')}
+            <span>{t('。')}</span>
           </h1>
-          <p>排好顺序，整理大纲，让每一章都各就其位。</p>
+          <p>{t('排好顺序，整理大纲，让每一章都各就其位。')}</p>
         </div>
         <button className="button subtle" disabled={!!busy} onClick={demo}>
-          试用示例
+          {t('试用示例')}
         </button>
       </div>
       <div className="chapter-layout">
@@ -276,13 +281,14 @@ export default function ChapterWorkspace() {
             <div className="panel-title">
               <h2>
                 <Files size={18} />
-                章节清单 <small>{chapters.length} / 20</small>
+                {t('章节清单')}
+                <small>{chapters.length} / 20</small>
               </h2>
               <button
                 className="icon-button"
                 onClick={() => input.current?.click()}
                 disabled={!!busy}
-                aria-label="添加章节"
+                aria-label={t('添加章节')}
               >
                 <Plus size={18} />
               </button>
@@ -308,9 +314,9 @@ export default function ChapterWorkspace() {
             >
               <button className="button" onClick={() => input.current?.click()} disabled={!!busy}>
                 <Plus size={16} />
-                添加 Word 文档
+                {t('添加 Word 文档')}
               </button>
-              <p>支持多选或拖入 · .docx · 每份 ≤ 25 MB</p>
+              <p>{t('支持多选或拖入 · .docx · 每份 ≤ 25 MB')}</p>
             </div>
             <ol className="chapter-files">
               {chapters.map((c, i) => (
@@ -319,7 +325,9 @@ export default function ChapterWorkspace() {
                   <div>
                     <strong title={c.file.name}>{c.file.name}</strong>
                     <small>
-                      {c.outline.length} 段 {i === 0 && ' · 页面与页眉页脚基准'}
+                      {c.outline.length}
+                      {t('段')}
+                      {i === 0 && t(' · 页面与页眉页脚基准')}
                     </small>
                   </div>
                   <div className="chapter-file-actions">
@@ -327,7 +335,7 @@ export default function ChapterWorkspace() {
                       className="icon-button"
                       disabled={!!busy || i === 0}
                       onClick={() => move(c.id, -1)}
-                      aria-label={`上移 ${c.file.name}`}
+                      aria-label={t('上移 {0}', c.file.name)}
                     >
                       <ArrowUp size={15} />
                     </button>
@@ -335,7 +343,7 @@ export default function ChapterWorkspace() {
                       className="icon-button"
                       disabled={!!busy || i === chapters.length - 1}
                       onClick={() => move(c.id, 1)}
-                      aria-label={`下移 ${c.file.name}`}
+                      aria-label={t('下移 {0}', c.file.name)}
                     >
                       <ArrowDown size={15} />
                     </button>
@@ -343,7 +351,7 @@ export default function ChapterWorkspace() {
                       className="icon-button"
                       disabled={!!busy}
                       onClick={() => setChapters((old) => old.filter((x) => x.id !== c.id))}
-                      aria-label={`移除 ${c.file.name}`}
+                      aria-label={t('移除 {0}', c.file.name)}
                     >
                       <Trash2 size={15} />
                     </button>
@@ -353,14 +361,14 @@ export default function ChapterWorkspace() {
             </ol>
             {!chapters.length && (
               <div className="chapter-empty-small">
-                把第一章、第二章、第三章…
+                {t('把第一章、第二章、第三章…')}
                 <br />
-                按最终阅读顺序放在这里。
+                {t('按最终阅读顺序放在这里。')}
               </div>
             )}
           </section>
           <section className="chapter-panel export-panel">
-            <h2>合并与导出</h2>
+            <h2>{t('合并与导出')}</h2>
             <fieldset disabled={!!busy}>
               <label className="check-label">
                 <input
@@ -368,19 +376,19 @@ export default function ChapterWorkspace() {
                   checked={pageBreak}
                   onChange={(e) => setPageBreak(e.target.checked)}
                 />
-                每一章另起一页
+                {t('每一章另起一页')}
               </label>
               <label className="field-label">
-                文件名
+                {t('文件名')}
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   maxLength={100}
-                  aria-label="合并文件名"
+                  aria-label={t('合并文件名')}
                 />
               </label>
               <p className="chapter-note">
-                页面尺寸、页边距、主题和页眉页脚采用清单第一章。原有正文分节不保留。
+                {t('页面尺寸、页边距、主题和页眉页脚采用清单第一章。原有正文分节不保留。')}
               </p>
               <div className="export-buttons">
                 <button
@@ -389,7 +397,7 @@ export default function ChapterWorkspace() {
                   onClick={() => exportFile(true)}
                 >
                   <Eye size={16} />
-                  预览
+                  {t('预览')}
                 </button>
                 <button
                   className="button primary"
@@ -397,19 +405,20 @@ export default function ChapterWorkspace() {
                   onClick={() => exportFile(false)}
                 >
                   <Download size={16} />
-                  导出 Word
+                  {t('导出 Word')}
                 </button>
               </div>
             </fieldset>
             {saved && (
               <a className="chapter-save" href={saved.url} download={saved.name}>
-                保存合并文件 · {saved.name}
+                {t('保存合并文件 ·')}
+                {saved.name}
               </a>
             )}
           </section>
         </aside>
         <div className="chapter-content">
-          <section className="chapter-mode-grid" aria-label="合并模式">
+          <section className="chapter-mode-grid" aria-label={t('合并模式')}>
             <button
               disabled={!!busy}
               className={`chapter-mode ${mode === 'original' ? 'chosen' : ''}`}
@@ -418,8 +427,8 @@ export default function ChapterWorkspace() {
             >
               <FileText size={23} />
               <div>
-                <strong>保留各章格式</strong>
-                <span>按顺序拼接，保留文字、表格和图片。</span>
+                <strong>{t('保留各章格式')}</strong>
+                <span>{t('按顺序拼接，保留文字、表格和图片。')}</span>
               </div>
               <span className="radio-dot" />
             </button>
@@ -431,8 +440,8 @@ export default function ChapterWorkspace() {
             >
               <WandSparkles size={23} />
               <div>
-                <strong>智能大纲与统一格式</strong>
-                <span>识别标题层级，按类型统一文字格式。</span>
+                <strong>{t('智能大纲与统一格式')}</strong>
+                <span>{t('识别标题层级，按类型统一文字格式。')}</span>
               </div>
               <span className="radio-dot" />
             </button>
@@ -458,12 +467,12 @@ export default function ChapterWorkspace() {
                 <div className="panel-title">
                   <h2>
                     <WandSparkles size={18} />
-                    统一哪些类型
+                    {t('统一哪些类型')}
                   </h2>
                   <label className="preset-picker">
-                    格式预设
+                    {t('格式预设')}
                     <select
-                      aria-label="格式预设"
+                      aria-label={t('格式预设')}
                       defaultValue=""
                       disabled={!!busy}
                       onChange={(e) => {
@@ -472,14 +481,16 @@ export default function ChapterWorkspace() {
                         e.target.value = '';
                       }}
                     >
-                      <option value="">选择预设…</option>
-                      <option value="report">中文报告（宋体 / 黑体）</option>
-                      <option value="simple">简洁方案（微软雅黑）</option>
+                      <option value="">{t('选择预设…')}</option>
+                      <option value="report">{t('中文报告（宋体 / 黑体）')}</option>
+                      <option value="simple">{t('简洁方案（微软雅黑）')}</option>
                     </select>
                   </label>
                 </div>
                 <p className="chapter-note">
-                  勾选的类型统一字体、字号、粗细、颜色和段落排版。未勾选的类型保留外观，仍写入已确认的大纲级别；斜体、上下标和链接保留。
+                  {t(
+                    '勾选的类型统一字体、字号、粗细、颜色和段落排版。未勾选的类型保留外观，仍写入已确认的大纲级别；斜体、上下标和链接保留。',
+                  )}
                 </p>
                 <fieldset disabled={!!busy} className="format-types">
                   {types
@@ -496,21 +507,24 @@ export default function ChapterWorkspace() {
                             onChange={(e) => updateFormat(level, { enabled: e.target.checked })}
                           />
                           <strong>{typeLabel(level)}</strong>
-                          <small>{stats.counts[level] ?? 0} 段</small>
+                          <small>
+                            {stats.counts[level] ?? 0}
+                            {t('段')}
+                          </small>
                         </label>
                         <div className="type-basic">
                           <label>
-                            字体
+                            {t('字体')}
                             <input
                               list="chapter-fonts"
                               value={formats[level].font}
                               disabled={!formats[level].enabled}
                               onChange={(e) => updateFormat(level, { font: e.target.value })}
-                              aria-label={`${typeLabel(level)}字体`}
+                              aria-label={t('{0}字体', typeLabel(level))}
                             />
                           </label>
                           <label>
-                            字号 pt
+                            {t('字号 pt')}
                             <input
                               type="number"
                               min="5"
@@ -521,12 +535,12 @@ export default function ChapterWorkspace() {
                               onChange={(e) =>
                                 updateFormat(level, { size: Number(e.target.value) })
                               }
-                              aria-label={`${typeLabel(level)}字号`}
+                              aria-label={t('{0}字号', typeLabel(level))}
                             />
                           </label>
                         </div>
                         <details>
-                          <summary>更多排版设置</summary>
+                          <summary>{t('更多排版设置')}</summary>
                           <div className="type-details">
                             <label className="check-label">
                               <input
@@ -534,10 +548,10 @@ export default function ChapterWorkspace() {
                                 checked={formats[level].bold}
                                 onChange={(e) => updateFormat(level, { bold: e.target.checked })}
                               />
-                              加粗
+                              {t('加粗')}
                             </label>
                             <label>
-                              对齐
+                              {t('对齐')}
                               <select
                                 value={formats[level].align}
                                 onChange={(e) =>
@@ -546,13 +560,13 @@ export default function ChapterWorkspace() {
                                   })
                                 }
                               >
-                                <option value="left">左对齐</option>
-                                <option value="center">居中</option>
-                                <option value="both">两端对齐</option>
+                                <option value="left">{t('左对齐')}</option>
+                                <option value="center">{t('居中')}</option>
+                                <option value="both">{t('两端对齐')}</option>
                               </select>
                             </label>
                             <label>
-                              行距倍数
+                              {t('行距倍数')}
                               <input
                                 type="number"
                                 min="1"
@@ -565,7 +579,7 @@ export default function ChapterWorkspace() {
                               />
                             </label>
                             <label>
-                              段后 pt
+                              {t('段后 pt')}
                               <input
                                 type="number"
                                 min="0"
@@ -577,7 +591,7 @@ export default function ChapterWorkspace() {
                               />
                             </label>
                             <label>
-                              首行缩进（字）
+                              {t('首行缩进（字）')}
                               <input
                                 type="number"
                                 min="0"
@@ -596,11 +610,11 @@ export default function ChapterWorkspace() {
                 </fieldset>
                 <datalist id="chapter-fonts">
                   {[
-                    '宋体',
-                    '黑体',
-                    '微软雅黑',
-                    '仿宋',
-                    '楷体',
+                    t('宋体'),
+                    t('黑体'),
+                    t('微软雅黑'),
+                    t('仿宋'),
+                    t('楷体'),
                     'Arial',
                     'Times New Roman',
                     'Calibri',
@@ -613,7 +627,11 @@ export default function ChapterWorkspace() {
                 <div className="panel-title">
                   <h2>
                     <ListTree size={18} />
-                    检查文档大纲 <small>{stats.headings} 个标题</small>
+                    {t('检查文档大纲')}
+                    <small>
+                      {stats.headings}
+                      {t('个标题')}
+                    </small>
                   </h2>
                   <button
                     className="button subtle"
@@ -621,38 +639,41 @@ export default function ChapterWorkspace() {
                     onClick={() => setChapters((old) => old.map((c) => ({ ...c, overrides: {} })))}
                   >
                     <RotateCcw size={14} />
-                    重置级别
+                    {t('重置级别')}
                   </button>
                 </div>
                 <p className="chapter-note">
-                  识别在本机完成，不调用 AI
-                  服务。可按编号模式批量改级别；切换“全部段落”也能把漏识别的正文改成标题。标题会进入
-                  Word 的导航窗格。
+                  {t(
+                    '识别在本机完成，不调用 AI 服务。可按编号模式批量改级别；切换“全部段落”也能把漏识别的正文改成标题。标题会进入 Word 的导航窗格。',
+                  )}
                 </p>
                 <div className="outline-tools">
                   <label>
                     <Search size={15} />
                     <input
-                      placeholder="搜索段落或章节…"
+                      placeholder={t('搜索段落或章节…')}
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
-                      aria-label="搜索章节段落"
+                      aria-label={t('搜索章节段落')}
                     />
                   </label>
                   <select
-                    aria-label="大纲筛选"
+                    aria-label={t('大纲筛选')}
                     value={filter}
                     onChange={(e) => setFilter(e.target.value)}
                   >
-                    <option value="headings">仅标题</option>
-                    <option value="all">全部段落</option>
+                    <option value="headings">{t('仅标题')}</option>
+                    <option value="all">{t('全部段落')}</option>
                     {[-1, ...types].map((l) => (
                       <option key={l} value={l}>
                         {typeLabel(l)}
                       </option>
                     ))}
                   </select>
-                  <span>{rows.length} 段</span>
+                  <span>
+                    {rows.length}
+                    {t('段')}
+                  </span>
                 </div>
                 <div className="outline-list">
                   {rows.slice(page * 50, (page + 1) * 50).map(({ c, p, level }) => (
@@ -665,9 +686,9 @@ export default function ChapterWorkspace() {
                         {level >= 1 && level <= 9
                           ? `H${level}`
                           : level === 11
-                            ? '表'
+                            ? t('表')
                             : level === 10
-                              ? '注'
+                              ? t('注')
                               : '¶'}
                       </span>
                       <div
@@ -678,13 +699,21 @@ export default function ChapterWorkspace() {
                       >
                         <strong>{p.text}</strong>
                         <small>
-                          {c.file.name} · 第 {p.index + 1} 段 · {p.reason}
-                          {c.overrides[p.index] !== undefined ? ' · 已手动设定' : ''}
+                          {c.file.name}
+                          {t('· 第')}
+                          {p.index + 1}
+                          {t('段 ·')}
+                          {t(p.reason)}
+                          {c.overrides[p.index] !== undefined ? t(' · 已手动设定') : ''}
                         </small>
                       </div>
                       <div className="outline-actions">
                         <select
-                          aria-label={`第 ${chapters.indexOf(c) + 1} 章第 ${p.index + 1} 段级别`}
+                          aria-label={t(
+                            '第 {0} 章第 {1} 段级别',
+                            chapters.indexOf(c) + 1,
+                            p.index + 1,
+                          )}
                           disabled={!!busy}
                           value={level}
                           onChange={(e) => changeLevel(c.id, p.index, Number(e.target.value))}
@@ -701,9 +730,9 @@ export default function ChapterWorkspace() {
                           className="button subtle"
                           disabled={!!busy}
                           onClick={() => applyGroup(c, p.index)}
-                          title="将相同识别依据的段落设为此级别"
+                          title={t('将相同识别依据的段落设为此级别')}
                         >
-                          同类应用
+                          {t('同类应用')}
                         </button>
                       </div>
                     </div>
@@ -712,8 +741,8 @@ export default function ChapterWorkspace() {
                 {!rows.length && (
                   <div className="chapter-empty-small">
                     {chapters.length
-                      ? '没有符合条件的段落。可切换“全部段落”检查。'
-                      : '添加文档后，在这里检查和调整大纲。'}
+                      ? t('没有符合条件的段落。可切换“全部段落”检查。')
+                      : t('添加文档后，在这里检查和调整大纲。')}
                   </div>
                 )}
                 {rows.length > 50 && (
@@ -723,7 +752,7 @@ export default function ChapterWorkspace() {
                       disabled={page === 0}
                       onClick={() => setPage((p) => p - 1)}
                     >
-                      上一页
+                      {t('上一页')}
                     </button>
                     <span>
                       {page + 1} / {Math.ceil(rows.length / 50)}
@@ -733,7 +762,7 @@ export default function ChapterWorkspace() {
                       disabled={(page + 1) * 50 >= rows.length}
                       onClick={() => setPage((p) => p + 1)}
                     >
-                      下一页
+                      {t('下一页')}
                     </button>
                   </div>
                 )}
@@ -744,39 +773,45 @@ export default function ChapterWorkspace() {
               <div className="original-icon">
                 <Files size={34} />
               </div>
-              <h2>像拼接章节一样简单</h2>
-              <p>添加文档 → 调整顺序 → 导出完整 Word</p>
+              <h2>{t('像拼接章节一样简单')}</h2>
+              <p>{t('添加文档 → 调整顺序 → 导出完整 Word')}</p>
               <div className="original-facts">
                 <div>
                   <strong>{chapters.length || '01'}</strong>
-                  <span>{chapters.length ? '份章节待合并' : '添加多个章节'}</span>
+                  <span>{chapters.length ? t('份章节待合并') : t('添加多个章节')}</span>
                 </div>
                 <div>
                   <strong>{stats.total || '02'}</strong>
-                  <span>{stats.total ? '段内容已读取' : '排好阅读顺序'}</span>
+                  <span>{stats.total ? t('段内容已读取') : t('排好阅读顺序')}</span>
                 </div>
                 <div>
                   <strong>DOCX</strong>
-                  <span>继续在 Word 中编辑</span>
+                  <span>{t('继续在 Word 中编辑')}</span>
                 </div>
               </div>
               <p className="chapter-note">
-                各章样式、列表编号与图片分别处理，减少同名样式相互覆盖。需要统一正文、标题和表格文字时，选择上方“智能大纲与统一格式”。
+                {t(
+                  '各章样式、列表编号与图片分别处理，减少同名样式相互覆盖。需要统一正文、标题和表格文字时，选择上方“智能大纲与统一格式”。',
+                )}
               </p>
             </section>
           )}
           <details className="chapter-limits">
-            <summary>使用范围与小提示</summary>
+            <summary>{t('使用范围与小提示')}</summary>
             <p>
-              适用于普通 DOCX
-              段落、表格、嵌入图片、列表和链接。不会自动续编或重写正文中的章节编号。表格内文字不会被自动识别成大纲标题。
+              {t(
+                '适用于普通 DOCX 段落、表格、嵌入图片、列表和链接。不会自动续编或重写正文中的章节编号。表格内文字不会被自动识别成大纲标题。',
+              )}
             </p>
             <p>
-              含修订、批注、脚注尾注、正文域、内容控件、嵌入对象或旧式图形的文件会提示处理后再添加。字体需在本机安装；浏览器预览与
-              Word 的分页可能不同。建议导出后在 Word 中检查图片位置和分页。
+              {t(
+                '含修订、批注、脚注尾注、正文域、内容控件、嵌入对象或旧式图形的文件会提示处理后再添加。字体需在本机安装；浏览器预览与 Word 的分页可能不同。建议导出后在 Word 中检查图片位置和分页。',
+              )}
             </p>
             <p>
-              文件仅保存在当前浏览器页面内；切换工作台会保留选择，刷新或关闭页面会清空，请及时导出。
+              {t(
+                '文件仅保存在当前浏览器页面内；切换工作台会保留选择，刷新或关闭页面会清空，请及时导出。',
+              )}
             </p>
           </details>
         </div>
@@ -787,23 +822,23 @@ export default function ChapterWorkspace() {
             className="modal preview-modal"
             role="dialog"
             aria-modal="true"
-            aria-label="章节合并预览"
+            aria-label={t('章节合并预览')}
           >
             <header className="modal-header">
-              <h2>章节合并预览</h2>
+              <h2>{t('章节合并预览')}</h2>
               <button
                 className="icon-button"
                 onClick={() => setPreview(undefined)}
-                aria-label="关闭章节预览"
+                aria-label={t('关闭章节预览')}
                 autoFocus
               >
                 <X size={20} />
               </button>
             </header>
             <p className="chapter-note preview-note">
-              此为浏览器近似预览，最终分页请在 Word 中核对。
+              {t('此为浏览器近似预览，最终分页请在 Word 中核对。')}
             </p>
-            <Preview bytes={preview} title="章节合并结果" />
+            <Preview bytes={preview} title={t('章节合并结果')} />
           </section>
         </div>
       )}

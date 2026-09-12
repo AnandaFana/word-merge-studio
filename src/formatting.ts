@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import type { Block, FormatChoice, Plan, Row, Side, WordFile } from './engine';
 
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
@@ -253,13 +254,13 @@ export function formatIssue(
   base: Side,
 ): string | undefined {
   if (format === 'default') return;
-  if (files.left.locked || files.right.locked) return '跨段结构锁定，暂不能重排格式。';
-  if ([row.left, row.right].some((b) => b && !b.safe)) return '复杂内容仅支持原样保留格式。';
+  if (files.left.locked || files.right.locked) return t('跨段结构锁定，暂不能重排格式。');
+  if ([row.left, row.right].some((b) => b && !b.safe)) return t('复杂内容仅支持原样保留格式。');
   if (format === 'left' || format === 'right') {
     const template = row[format];
-    if (!template) return '该侧没有对应段落，请使用智能匹配。';
+    if (!template) return t('该侧没有对应段落，请使用智能匹配。');
     if (row.left && row.right && row.left.type !== row.right.type)
-      return '段落与表格之间不能直接套用格式。';
+      return t('段落与表格之间不能直接套用格式。');
     if (row.left?.type === 'tbl' && row.right?.type === 'tbl') {
       const shape = (b: Block) =>
         all(b.element, 'tr')
@@ -278,12 +279,12 @@ export function formatIssue(
               .join('|'),
           )
           .join('/');
-      if (shape(row.left) !== shape(row.right)) return '表格结构不一致，不能直接套用格式。';
+      if (shape(row.left) !== shape(row.right)) return t('表格结构不一致，不能直接套用格式。');
     }
     if (format !== base) {
       const ps = template.type === 'p' ? [template.element] : all(template.element, 'p');
       if (ps.some((p) => child(paragraphProps(files[format], p), 'numPr')))
-        return '该侧含自动编号，尚不支持跨文档编号格式迁移。';
+        return t('该侧含自动编号，尚不支持跨文档编号格式迁移。');
       if (
         ps.some((p) =>
           Array.from(paragraphProps(files[format], p).getElementsByTagName('*')).some((e) =>
@@ -291,7 +292,7 @@ export function formatIssue(
           ),
         )
       )
-        return '该侧含浮动框架或条件样式，暂不能跨侧迁移格式。';
+        return t('该侧含浮动框架或条件样式，暂不能跨侧迁移格式。');
       if (
         ps.some((p) =>
           Array.from(paragraphProps(files[format], p).getElementsByTagName('*')).some((e) =>
@@ -299,7 +300,7 @@ export function formatIssue(
           ),
         )
       )
-        return '段落边框或底纹包含主题格式，暂不能跨侧迁移。';
+        return t('段落边框或底纹包含主题格式，暂不能跨侧迁移。');
     }
   }
 }
@@ -338,15 +339,17 @@ function smartTemplate(
 }
 
 export function formatSummary(file: WordFile, block?: Block): string {
-  if (!block) return '无对应段落';
-  if (!block.safe) return '复杂结构';
-  if (block.type === 'tbl') return '表格文字格式';
+  if (!block) return t('无对应段落');
+  if (!block.safe) return t('复杂结构');
+  if (block.type === 'tbl') return t('表格文字格式');
   const props = dominantRun(file, block.element);
-  const name = { heading: '标题', body: '正文', list: '列表' }[paragraphRole(file, block.element)];
+  const name = { heading: t('标题'), body: t('正文'), list: t('列表') }[
+    paragraphRole(file, block.element)
+  ];
   const font =
     child(props, 'rFonts')?.getAttributeNS(W, 'eastAsia') ||
     child(props, 'rFonts')?.getAttributeNS(W, 'ascii') ||
-    '默认字体';
+    t('默认字体');
   const size = val(child(props, 'sz'));
   return `${name} · ${font}${size ? ` · ${Number(size) / 2}pt` : ''}`;
 }
@@ -405,7 +408,7 @@ function uniformParagraph(
         Array.from(e.attributes).some((a) => /Theme|^theme/.test(a.localName)),
       )
     )
-      throw new Error('所选格式包含无法解析的主题引用，请改用底稿格式。');
+      throw new Error(t('所选格式包含无法解析的主题引用，请改用底稿格式。'));
     const fonts = child(rp, 'rFonts') ?? make(baseFile.xml, 'rFonts');
     for (const script of ['ascii', 'hAnsi', 'eastAsia', 'cs'])
       if (!fonts.hasAttributeNS(W, script))
@@ -553,7 +556,7 @@ export function normalizeBlock(
       targetPs = all(result, 'p');
     const templatePs = explicit ? all(explicit.element, 'p') : targetPs;
     if (templatePs.length !== sourcePs.length)
-      throw new Error('两侧表格段落结构不一致，无法选取格式。');
+      throw new Error(t('两侧表格段落结构不一致，无法选取格式。'));
     sourcePs.forEach((p, i) =>
       targetPs[i].replaceWith(uniformParagraph(p, templatePs[i], templateFile, files[base], false)),
     );

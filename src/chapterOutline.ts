@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import { textOf, type WordFile } from './engine';
 import { paragraphProps, dominantRun } from './formatting';
 
@@ -14,14 +15,14 @@ export const make = (doc: Document, name: string, attrs: Record<string, string> 
 };
 export const typeLabel = (level: number) =>
   level === -1
-    ? '保持原样'
+    ? t('保持原样')
     : level === 0
-      ? '正文'
+      ? t('正文')
       : level === 10
-        ? '图表题注'
+        ? t('图表题注')
         : level === 11
-          ? '表格文字'
-          : `${level} 级标题`;
+          ? t('表格文字')
+          : t('{0} 级标题', level);
 export interface OutlineItem {
   index: number;
   text: string;
@@ -51,6 +52,8 @@ export interface ChapterOptions {
   mode: 'original' | 'unified';
   pageBreak: boolean;
   formats: TypeFormats;
+  /** Explicit assembly order. References use positions in the original file.blocks array. */
+  assembly?: ({ chapterId: string; blockIndex: number } | { title: string; level: number })[];
 }
 export function defaultFormats(preset: 'report' | 'simple' = 'report'): TypeFormats {
   return Object.fromEntries(

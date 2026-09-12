@@ -4,7 +4,11 @@ dist/
 *.log
 *.tsbuildinfo
 .qa/
+tmp/
 *.docx
+!examples/public/garden.docx
+!examples/public/library.docx
+!examples/public/cafe.docx
 *.doc
 *.docm
 *.pdf

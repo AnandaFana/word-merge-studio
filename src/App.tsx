@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowDown,
@@ -34,15 +35,7 @@ import { effectiveFormat, formatIssue, formatSummary } from './formatting';
 import Preview from './Preview';
 import { createDemo } from './demo';
 
-const labels = {
-  equal: '相同',
-  format: '格式差异',
-  modified: '内容修改',
-  added: '右侧新增',
-  removed: '左侧独有',
-  complex: '复杂内容',
-};
-const sideLabel = (side: Side) => (side === 'left' ? '左侧' : '右侧');
+const sideLabel = (side: Side) => (side === 'left' ? t('左侧') : t('右侧'));
 function download(bytes: Uint8Array, name: string, type: string, retain = false) {
   const url = URL.createObjectURL(new Blob([bytes.slice().buffer], { type }));
   const a = document.createElement('a');
@@ -56,6 +49,14 @@ function download(bytes: Uint8Array, name: string, type: string, retain = false)
 }
 
 export default function App({ embedded = false }: { embedded?: boolean }) {
+  const labels = {
+    equal: t('相同'),
+    format: t('格式差异'),
+    modified: t('内容修改'),
+    added: t('右侧新增'),
+    removed: t('左侧独有'),
+    complex: t('复杂内容'),
+  };
   const [files, setFiles] = useState<Partial<Record<Side, WordFile>>>({});
   const [plan, setPlan] = useState<Plan>({ base: 'left', choices: {} });
   const [history, setHistory] = useState<Plan[]>([]);
@@ -120,7 +121,7 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
   async function load(side: Side, file?: File) {
     if (!file) return;
     const version = ++loadVersion.current;
-    setBusy(`正在读取${sideLabel(side)}文档…`);
+    setBusy(t('正在读取{0}文档…', sideLabel(side)));
     setError('');
     try {
       const parsed = await readWord(file.name, await file.arrayBuffer());
@@ -134,13 +135,13 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
     }
   }
   async function demo() {
-    setBusy('正在载入示例…');
+    setBusy(t('正在载入示例…'));
     setError('');
     try {
       const [left, right] = await Promise.all([createDemo('left'), createDemo('right')]);
       setFiles({
-        left: await readWord('项目方案 · 初稿.docx', left),
-        right: await readWord('项目方案 · 修订稿.docx', right),
+        left: await readWord(t('项目方案 · 初稿.docx'), left),
+        right: await readWord(t('项目方案 · 修订稿.docx'), right),
       });
       resetReview();
     } catch (e) {
@@ -167,7 +168,12 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
     }
     commit({ ...plan, choices });
     setNotice(
-      `已采纳${sideLabel(side)}${changes.length - skipped} 项${skipped ? `；${skipped} 项复杂内容保持原选择` : ''}。`,
+      t(
+        '已采纳{0}{1} 项{2}。',
+        sideLabel(side),
+        changes.length - skipped,
+        skipped ? t('；{0} 项复杂内容保持原选择', skipped) : '',
+      ),
     );
   }
   function chooseFormat(row: Row, format: FormatChoice) {
@@ -180,13 +186,13 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
     setActive(row.id);
   }
   async function exportWord(preview = false) {
-    setBusy(preview ? '正在生成合并预览…' : '正在打包 Word…');
+    setBusy(preview ? t('正在生成合并预览…') : t('正在打包 Word…'));
     setError('');
     try {
       const bytes = await mergeWords(files as Record<Side, WordFile>, rows, plan);
       if (preview) setResult(bytes);
       else {
-        const name = `${files[plan.base]!.name.replace(/\.docx$/i, '')}_合并.docx`;
+        const name = t('{0}_合并.docx', files[plan.base]!.name.replace(/\.docx$/i, ''));
         const url = download(
           bytes,
           name,
@@ -196,7 +202,11 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
         setDownloadReady({ url, name });
         setResult(undefined);
         setNotice(
-          `Word 已生成。${changes.length - reviewed} 项未确认差异使用${sideLabel(plan.base)}底稿；若未开始下载，请点击下面的保存链接。`,
+          t(
+            'Word 已生成。{0} 项未确认差异使用{1}底稿；若未开始下载，请点击下面的保存链接。',
+            changes.length - reviewed,
+            sideLabel(plan.base),
+          ),
         );
       }
     } catch (e) {
@@ -221,7 +231,7 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
       right: files.right?.name,
       base: plan.base,
       formatMode: plan.formatMode ?? 'preserve',
-      note: '正文块选择清单；未确认项使用底稿；不包含正文。',
+      note: t('正文块选择清单；未确认项使用底稿；不包含正文。'),
       rows: rows.map((row) => ({
         id: row.id,
         leftIndex: row.left?.index,
@@ -234,7 +244,7 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
     };
     download(
       new TextEncoder().encode(JSON.stringify(content, null, 2)),
-      '合并选择记录.json',
+      t('合并选择记录.json'),
       'application/json',
     );
   }
@@ -248,13 +258,18 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
               <GitMerge size={22} />
             </span>
             <strong>Word Merge</strong>
-            <span className="edition">本地工作台</span>
+            <span className="edition">{t('本地工作台')}</span>
           </div>
           <div className="topbar-right">
             <span className="privacy">
-              <span /> 文件只在本机处理
+              <span />
+              {t('文件只在本机处理')}
             </span>
-            <button className="icon-button" onClick={() => setHelp(true)} aria-label="使用说明">
+            <button
+              className="icon-button"
+              onClick={() => setHelp(true)}
+              aria-label={t('使用说明')}
+            >
               <HelpCircle size={19} />
             </button>
           </div>
@@ -265,18 +280,20 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
           <div>
             <div className="eyebrow">DOCUMENT COMPARISON & MERGE</div>
             <h1>
-              两份文档，一份定稿<span>。</span>
+              {t('两份文档，一份定稿')}
+              <span>{t('。')}</span>
             </h1>
-            <p>并排查看差异，逐项选择内容，让格式跟随同一份底稿。</p>
+            <p>{t('并排查看差异，逐项选择内容，让格式跟随同一份底稿。')}</p>
           </div>
           {embedded && (
             <button className="button subtle" onClick={() => setHelp(true)}>
               <HelpCircle size={17} />
-              使用说明
+              {t('使用说明')}
             </button>
           )}
           <button className="button subtle" onClick={demo} disabled={!!busy}>
-            <FileText size={16} /> 体验示例
+            <FileText size={16} />
+            {t('体验示例')}
           </button>
         </div>
         <section className="file-grid">
@@ -295,26 +312,32 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
               </span>
               <div className="file-detail">
                 <div className="file-label">
-                  {sideLabel(side)}文档 <span>{side === 'left' ? 'A' : 'B'}</span>
-                  {plan.base === side && loaded && <em>格式基准</em>}
+                  {sideLabel(side)}
+                  {t('文档')}
+                  <span>{side === 'left' ? 'A' : 'B'}</span>
+                  {plan.base === side && loaded && <em>{t('格式基准')}</em>}
                 </div>
                 <strong title={files[side]?.name}>
-                  {files[side]?.name ?? '选择或拖入 Word 文档'}
+                  {files[side]?.name ?? t('选择或拖入 Word 文档')}
                 </strong>
                 <small>
                   {files[side]
-                    ? `${files[side]!.blocks.length} 个正文块 · ${(files[side]!.bytes.length / 1024).toFixed(1)} KB`
-                    : '.docx 格式，最大 25 MB'}
+                    ? t(
+                        '{0} 个正文块 · {1} KB',
+                        files[side]!.blocks.length,
+                        (files[side]!.bytes.length / 1024).toFixed(1),
+                      )
+                    : t('.docx 格式，最大 25 MB')}
                 </small>
               </div>
               <button
                 className="button file-open"
                 onClick={() => inputs[side].current?.click()}
                 disabled={!!busy}
-                aria-label={`选择${sideLabel(side)}文档`}
+                aria-label={t('选择{0}文档', sideLabel(side))}
               >
                 <FolderOpen size={17} />
-                {files[side] ? '更换' : '打开'}
+                {files[side] ? t('更换') : t('打开')}
               </button>
               <input
                 ref={inputs[side]}
@@ -331,7 +354,7 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
         </section>
         <section className="merge-toolbar">
           <div className="base-control">
-            <span className="toolbar-label">文档底稿</span>
+            <span className="toolbar-label">{t('文档底稿')}</span>
             <div className="segmented">
               {(['left', 'right'] as Side[]).map((side) => (
                 <button
@@ -341,27 +364,28 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
                   onClick={() => {
                     if (side !== plan.base) {
                       commit({ base: side, choices: {}, formatMode: plan.formatMode });
-                      setNotice('已切换格式基准并重置选择，可撤销恢复。');
+                      setNotice(t('已切换格式基准并重置选择，可撤销恢复。'));
                     }
                   }}
                 >
-                  {plan.base === side && <Check size={14} />} {sideLabel(side)}文档
+                  {plan.base === side && <Check size={14} />} {sideLabel(side)}
+                  {t('文档')}
                 </button>
               ))}
             </div>
-            <span className="base-hint">样式 · 页眉页脚 · 页面设置</span>
+            <span className="base-hint">{t('样式 · 页眉页脚 · 页面设置')}</span>
           </div>
           <div className="action-group">
             <button
               className="icon-button"
-              title="撤销最近一次选择"
+              title={t('撤销最近一次选择')}
               disabled={!history.length || !!busy}
               onClick={() => {
                 setPlan(history[history.length - 1]);
                 setHistory((h) => h.slice(0, -1));
                 setResult(undefined);
                 setDownloadReady(undefined);
-                setNotice('已撤销');
+                setNotice(t('已撤销'));
               }}
             >
               <RotateCcw size={17} />
@@ -371,40 +395,42 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
               disabled={!loaded || !!busy}
               onClick={() => exportWord(true)}
             >
-              <Eye size={16} /> 合并预览
+              <Eye size={16} />
+              {t('合并预览')}
             </button>
             <button
               className="button primary"
               disabled={!loaded || !!busy}
               onClick={() => exportWord()}
             >
-              <Download size={16} /> 导出 Word
+              <Download size={16} />
+              {t('导出 Word')}
             </button>
           </div>
         </section>
         <section className="format-toolbar">
           <label>
-            全局文字格式
+            {t('全局文字格式')}
             <select
-              aria-label="全局文字格式"
+              aria-label={t('全局文字格式')}
               value={plan.formatMode ?? 'preserve'}
               disabled={!!busy || !!files.left?.locked || !!files.right?.locked}
               onChange={(e) =>
                 commit({ ...plan, formatMode: e.target.value as 'preserve' | 'smart' })
               }
             >
-              <option value="preserve">精确保留底稿（保留局部强调）</option>
-              <option value="smart">智能匹配底稿（整段统一）</option>
+              <option value="preserve">{t('精确保留底稿（保留局部强调）')}</option>
+              <option value="smart">{t('智能匹配底稿（整段统一）')}</option>
             </select>
           </label>
           <span>
-            内容和格式独立选择。整段统一会清除该段局部粗体、斜体等差异；页眉页脚仍跟随底稿。
+            {t('内容和格式独立选择。整段统一会清除该段局部粗体、斜体等差异；页眉页脚仍跟随底稿。')}
           </span>
         </section>
         {(error || comparison.error) && (
           <div className="error" role="alert">
             {error || comparison.error}
-            <button className="icon-button" onClick={() => setError('')} aria-label="关闭错误">
+            <button className="icon-button" onClick={() => setError('')} aria-label={t('关闭错误')}>
               <X size={16} />
             </button>
           </div>
@@ -417,9 +443,10 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
         {downloadReady && (
           <div className="download-ready">
             <Check size={16} />
-            <span>合并文件已就绪</span>
+            <span>{t('合并文件已就绪')}</span>
             <a href={downloadReady.url} download={downloadReady.name}>
-              保存 {downloadReady.name}
+              {t('保存')}
+              {downloadReady.name}
             </a>
           </div>
         )}
@@ -429,19 +456,22 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
               <div className="view-tabs">
                 <button className={mode === 'diff' ? 'active' : ''} onClick={() => setMode('diff')}>
                   <FileDiff size={16} />
-                  差异审阅
+                  {t('差异审阅')}
                 </button>
                 <button
                   className={mode === 'original' ? 'active' : ''}
                   onClick={() => setMode('original')}
                 >
                   <FileText size={16} />
-                  原版预览
+                  {t('原版预览')}
                 </button>
               </div>
               <span className="review-count">
-                <strong>{changes.length}</strong> 处待审差异 <span>·</span> 已确认 {reviewed}/
-                {changes.length}
+                <strong>{changes.length}</strong>
+                {t('处待审差异')}
+                <span>·</span>
+                {t('已确认')}
+                {reviewed}/{changes.length}
               </span>
               <div className="progress-track">
                 <div
@@ -454,8 +484,8 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
                 <label className="search">
                   <Search size={15} />
                   <input
-                    aria-label="搜索正文"
-                    placeholder="搜索正文…"
+                    aria-label={t('搜索正文')}
+                    placeholder={t('搜索正文…')}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                   />
@@ -466,50 +496,58 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
                     checked={onlyDiff}
                     onChange={(e) => setOnlyDiff(e.target.checked)}
                   />
-                  只看差异
+                  {t('只看差异')}
                 </label>
                 <div className="spacer" />
-                <button className="text-button" onClick={() => navigate(-1)} title="上一处差异">
+                <button
+                  className="text-button"
+                  onClick={() => navigate(-1)}
+                  title={t('上一处差异')}
+                >
                   <ArrowUp size={15} />
                 </button>
-                <button className="text-button" onClick={() => navigate(1)} title="下一处差异">
+                <button className="text-button" onClick={() => navigate(1)} title={t('下一处差异')}>
                   <ArrowDown size={15} />
                 </button>
                 <span className="vertical-rule" />
                 <button className="text-button" disabled={!!busy} onClick={() => chooseAll('left')}>
-                  全部选左
+                  {t('全部选左')}
                 </button>
                 <button
                   className="text-button"
                   disabled={!!busy}
                   onClick={() => chooseAll('right')}
                 >
-                  全部选右
+                  {t('全部选右')}
                 </button>
               </div>
               <div className="column-head">
                 <div>
                   <span className="dot left-dot" />
-                  左侧 / A <small>{files.left!.name}</small>
+                  {t('左侧 / A')}
+                  <small>{files.left!.name}</small>
                 </div>
                 <div>
                   <span className="dot right-dot" />
-                  右侧 / B <small>{files.right!.name}</small>
+                  {t('右侧 / B')}
+                  <small>{files.right!.name}</small>
                 </div>
               </div>
               {mode === 'original' ? (
                 <>
                   <div className="preview-note">
-                    原版预览用于核对版式，操作请切回差异审阅。浏览器分页可能与 Word 不同。
+                    {t('原版预览用于核对版式，操作请切回差异审阅。浏览器分页可能与 Word 不同。')}
                   </div>
                   <div className="original-grid">
-                    <Preview bytes={files.left!.bytes} title="左侧 Word 原版预览" />
-                    <Preview bytes={files.right!.bytes} title="右侧 Word 原版预览" />
+                    <Preview bytes={files.left!.bytes} title={t('左侧 Word 原版预览')} />
+                    <Preview bytes={files.right!.bytes} title={t('右侧 Word 原版预览')} />
                   </div>
                 </>
               ) : (
                 <div className="diff-scroll">
-                  {!visible.length && <div className="empty-filter">没有符合条件的正文块。</div>}
+                  {!visible.length && (
+                    <div className="empty-filter">{t('没有符合条件的正文块。')}</div>
+                  )}
                   {visible.map((row) => (
                     <div
                       id={row.id}
@@ -530,7 +568,7 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
                               {row[side] ? (
                                 <>
                                   {row[side]!.type === 'tbl' && (
-                                    <span className="block-type">表格</span>
+                                    <span className="block-type">{t('表格')}</span>
                                   )}
                                   {row.kind === 'modified' && row.left && row.right
                                     ? inlineDiff(row.left.text, row.right.text, side).map(
@@ -546,13 +584,13 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
                                     : row[side]!.text || (
                                         <span className="muted">
                                           {row[side]!.safe
-                                            ? '空段落'
-                                            : '非文本内容，请查看原版预览'}
+                                            ? t('空段落')
+                                            : t('非文本内容，请查看原版预览')}
                                         </span>
                                       )}
                                 </>
                               ) : (
-                                <span className="absent">此处没有内容</span>
+                                <span className="absent">{t('此处没有内容')}</span>
                               )}
                             </div>
                           </div>
@@ -562,7 +600,7 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
                         <div className="row-actions">
                           <span className={`status-tag ${row.kind}`}>{labels[row.kind]}</span>
                           {row.kind === 'format' && (
-                            <span className="format-note">文字相同，可单独选择格式</span>
+                            <span className="format-note">{t('文字相同，可单独选择格式')}</span>
                           )}
                           <span className="spacer" />
                           <span className="decision">
@@ -570,10 +608,10 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
                             (plan.formats?.[row.id] ?? 'default') !== 'default' ? (
                               <>
                                 <CheckCheck size={13} />
-                                已确认
+                                {t('已确认')}
                               </>
                             ) : (
-                              `默认${sideLabel(plan.base)}`
+                              t('默认{0}', sideLabel(plan.base))
                             )}
                           </span>
                           {(['left', 'right', 'both', 'omit'] as Choice[]).map((choice) => {
@@ -589,7 +627,7 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
                                 title={
                                   issue ??
                                   (choice === 'both'
-                                    ? '按左、右顺序保留两块内容，格式由下方选项决定'
+                                    ? t('按左、右顺序保留两块内容，格式由下方选项决定')
                                     : '')
                                 }
                                 disabled={!!issue || !!busy}
@@ -600,12 +638,12 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
                                 }}
                               >
                                 {choice === 'left'
-                                  ? '选左'
+                                  ? t('选左')
                                   : choice === 'right'
-                                    ? '选右'
+                                    ? t('选右')
                                     : choice === 'both'
-                                      ? '都保留'
-                                      : '都不要'}
+                                      ? t('都保留')
+                                      : t('都不要')}
                               </button>
                             );
                           })}
@@ -613,14 +651,16 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
                       )}
                       <div className="row-format">
                         <span className="format-summaries">
-                          左：{formatSummary(files.left!, row.left)}
+                          {t('左：')}
+                          {formatSummary(files.left!, row.left)}
                           <br />
-                          右：{formatSummary(files.right!, row.right)}
+                          {t('右：')}
+                          {formatSummary(files.right!, row.right)}
                         </span>
                         <label>
-                          段落格式
+                          {t('段落格式')}
                           <select
-                            aria-label={`第 ${rows.indexOf(row) + 1} 块格式`}
+                            aria-label={t('第 {0} 块格式', rows.indexOf(row) + 1)}
                             value={plan.formats?.[row.id] ?? 'default'}
                             disabled={!!busy || plan.choices[row.id] === 'omit'}
                             onClick={(e) => e.stopPropagation()}
@@ -642,12 +682,12 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
                                     title={issue}
                                   >
                                     {format === 'default'
-                                      ? '跟随全局'
+                                      ? t('跟随全局')
                                       : format === 'left'
-                                        ? '左侧段落格式（整段统一）'
+                                        ? t('左侧段落格式（整段统一）')
                                         : format === 'right'
-                                          ? '右侧段落格式（整段统一）'
-                                          : '智能匹配底稿（整段统一）'}
+                                          ? t('右侧段落格式（整段统一）')
+                                          : t('智能匹配底稿（整段统一）')}
                                   </option>
                                 );
                               },
@@ -655,18 +695,18 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
                           </select>
                         </label>
                         <span className="format-result">
-                          内容：
+                          {t('内容：')}
                           {(plan.choices[row.id] ?? plan.base) === 'both'
-                            ? '两侧'
+                            ? t('两侧')
                             : (plan.choices[row.id] ?? plan.base) === 'omit'
-                              ? '不保留'
+                              ? t('不保留')
                               : sideLabel((plan.choices[row.id] ?? plan.base) as Side)}{' '}
-                          / 格式：
+                          {t('/ 格式：')}
                           {effectiveFormat(row, plan) === 'default'
-                            ? `${sideLabel(plan.base)}原格式`
+                            ? t('{0}原格式', sideLabel(plan.base))
                             : effectiveFormat(row, plan) === 'smart'
-                              ? `智能${sideLabel(plan.base)}`
-                              : `${sideLabel(effectiveFormat(row, plan) as Side)}统一`}
+                              ? t('智能{0}', sideLabel(plan.base))
+                              : t('{0}统一', sideLabel(effectiveFormat(row, plan) as Side))}
                         </span>
                       </div>
                     </div>
@@ -677,18 +717,26 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
             <div className="below-workspace">
               <button className="text-button" onClick={() => setShowWarnings(!showWarnings)}>
                 <ShieldCheck size={16} />
-                格式与支持范围 <ChevronDown size={14} />
+                {t('格式与支持范围')}
+                <ChevronDown size={14} />
               </button>
-              <span>未确认差异保留{sideLabel(plan.base)}底稿内容</span>
+              <span>
+                {t('未确认差异保留')}
+                {sideLabel(plan.base)}
+                {t('底稿内容')}
+              </span>
               <button className="text-button" onClick={saveReport}>
-                下载选择记录
+                {t('下载选择记录')}
               </button>
             </div>
             {showWarnings && (
               <div className="support-panel">
                 {(['left', 'right'] as Side[]).map((side) => (
                   <div key={side}>
-                    <strong>{sideLabel(side)}文档</strong>
+                    <strong>
+                      {sideLabel(side)}
+                      {t('文档')}
+                    </strong>
                     <ul>
                       {files[side]!.warnings.map((w, i) => (
                         <li key={i}>{w}</li>
@@ -697,7 +745,9 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
                   </div>
                 ))}
                 <p>
-                  新增段落继承附近底稿段落的格式，不继承其自动编号。复杂块在底稿中原样保留。表格只支持同结构单元格的文字修改。
+                  {t(
+                    '新增段落继承附近底稿段落的格式，不继承其自动编号。复杂块在底稿中原样保留。表格只支持同结构单元格的文字修改。',
+                  )}
                 </p>
               </div>
             )}
@@ -723,37 +773,39 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
                 <i />
               </div>
             </div>
-            <h2>把两个版本放在一起</h2>
+            <h2>{t('把两个版本放在一起')}</h2>
             <p>
-              在上方打开两份 Word 文档，或先体验示例。
+              {t('在上方打开两份 Word 文档，或先体验示例。')}
               <br />
-              从内容对比到格式保留，每一步由你决定。
+              {t('从内容对比到格式保留，每一步由你决定。')}
             </p>
             <button className="button primary" disabled={!!busy} onClick={demo}>
-              体验合并示例 <ArrowDown size={15} />
+              {t('体验合并示例')}
+              <ArrowDown size={15} />
             </button>
             <div className="welcome-features">
               <span>
                 <FileDiff size={17} />
-                逐字差异
+                {t('逐字差异')}
               </span>
               <span>
                 <CheckCheck size={17} />
-                逐项采纳
+                {t('逐项采纳')}
               </span>
               <span>
                 <ShieldCheck size={17} />
-                底稿格式保留
+                {t('底稿格式保留')}
               </span>
             </div>
           </section>
         )}
         <footer>
           <span>
-            <ShieldCheck size={14} /> 本地处理 · 无上传 · 无账号
+            <ShieldCheck size={14} />
+            {t('本地处理 · 无上传 · 无账号')}
           </span>
           <span>
-            Word Merge Studio <span className="version">v0.2</span>
+            Word Merge Studio <span className="version">v0.4</span>
           </span>
         </footer>
       </main>
@@ -763,28 +815,30 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
             className="modal preview-modal"
             role="dialog"
             aria-modal="true"
-            aria-label="合并结果预览"
+            aria-label={t('合并结果预览')}
           >
             <div className="modal-header">
               <div>
-                <h2>合并结果预览</h2>
+                <h2>{t('合并结果预览')}</h2>
                 <p>
-                  使用{sideLabel(plan.base)}文档底稿；段落格式按独立选择应用。最终分页以 Word 为准。
+                  {t('使用')}
+                  {sideLabel(plan.base)}
+                  {t('文档底稿；段落格式按独立选择应用。最终分页以 Word 为准。')}
                 </p>
               </div>
               <button className="button primary" onClick={() => exportWord()}>
                 <Download size={16} />
-                导出 Word
+                {t('导出 Word')}
               </button>
               <button
                 className="icon-button"
                 onClick={() => setResult(undefined)}
-                aria-label="关闭预览"
+                aria-label={t('关闭预览')}
               >
                 <X />
               </button>
             </div>
-            <Preview bytes={result} title="合并结果 Word 预览" />
+            <Preview bytes={result} title={t('合并结果 Word 预览')} />
           </section>
         </div>
       )}
@@ -794,28 +848,36 @@ export default function App({ embedded = false }: { embedded?: boolean }) {
             className="modal help-modal"
             role="dialog"
             aria-modal="true"
-            aria-label="使用说明"
+            aria-label={t('使用说明')}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
-              <h2>如何合并</h2>
-              <button className="icon-button" onClick={() => setHelp(false)} aria-label="关闭说明">
+              <h2>{t('如何合并')}</h2>
+              <button
+                className="icon-button"
+                onClick={() => setHelp(false)}
+                aria-label={t('关闭说明')}
+              >
                 <X />
               </button>
             </div>
             <ol>
-              <li>打开两份 .docx，选择左侧或右侧作为格式基准。</li>
-              <li>在差异审阅中逐项选左、选右、都保留或都不要。</li>
-              <li>通过原版预览核对文档，通过合并预览检查结果。</li>
-              <li>导出 Word，未确认项自动沿用底稿；源文件不会被覆盖。</li>
+              <li>{t('打开两份 .docx，选择左侧或右侧作为格式基准。')}</li>
+              <li>{t('在差异审阅中逐项选左、选右、都保留或都不要。')}</li>
+              <li>{t('通过原版预览核对文档，通过合并预览检查结果。')}</li>
+              <li>{t('导出 Word，未确认项自动沿用底稿；源文件不会被覆盖。')}</li>
             </ol>
             <p>
-              文档底稿控制页面设置、页眉页脚和样式文件。文字与段落格式可以分别选择，例如先“选右”采纳文字，再选“左侧段落格式”。默认精确保留模式继承对应片段格式；整段统一模式按所选段落的主体格式排版，会清除局部粗体、斜体等差异。
+              {t(
+                '文档底稿控制页面设置、页眉页脚和样式文件。文字与段落格式可以分别选择，例如先“选右”采纳文字，再选“左侧段落格式”。默认精确保留模式继承对应片段格式；整段统一模式按所选段落的主体格式排版，会清除局部粗体、斜体等差异。',
+              )}
             </p>
             <p>
-              智能匹配在本机识别标题、正文与列表；优先使用底稿同类对应段落，没有对应段落时选择同类常用格式，不使用邻近标题替代正文。它是启发式规则，需预览核对。表格仅统一单元格文字格式，几何和底色仍跟随底稿。跨侧自动编号格式暂不支持。
+              {t(
+                '智能匹配在本机识别标题、正文与列表；优先使用底稿同类对应段落，没有对应段落时选择同类常用格式，不使用邻近标题替代正文。它是启发式规则，需预览核对。表格仅统一单元格文字格式，几何和底色仍跟随底稿。跨侧自动编号格式暂不支持。',
+              )}
             </p>
-            <p>预览是浏览器近似排版，不是 Microsoft Word 引擎。</p>
+            <p>{t('预览是浏览器近似排版，不是 Microsoft Word 引擎。')}</p>
           </section>
         </div>
       )}

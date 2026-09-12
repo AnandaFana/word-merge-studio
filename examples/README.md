@@ -1,9 +1,25 @@
-# 本地测试文档
+# Public examples / 公开样例
 
-将自己的 `.docx` 放在此目录。Word 文件由 `.gitignore` 排除，不进入 GitHub，也不会被开发服务器直接提供；请通过网页的文件选择器打开它们。
+These fictional documents were created from scratch and are distributed under the project's MIT license. They contain no real project, organisation or personal data.
 
-- 分章样本：文件名以 `01_`、`02_`、`03_` 开头，不包含 ` - `，用于多章节回归。
-- 对比样本：一份原稿与同名 ` - 2.docx` 修订稿，用于旧功能回归。
-- 其他版本可手动通过对比工作台检查。
+以下三份文档均为从零制作的虚构样例，可公开分享：
 
-运行 `npm test` 会在存在匹配样本时执行相关回归；没有样本也能运行全部合成测试。分章测试结果另存到 `.qa/chapters/`，不会修改原文件。应用自带的虚构示例由 `src/demo.ts` 动态生成。
+| 文件 / File | 内容 / Scenario | 特点 / Features |
+| --- | --- | --- |
+| [garden.docx](public/garden.docx) | 社区花园 / Community garden | Georgia、宋体，绿色标题 |
+| [library.docx](public/library.docx) | 社区书屋 / Reading room | Arial、微软雅黑，绿色标题 |
+| [cafe.docx](public/cafe.docx) | 街角咖啡 / Neighbourhood cafe | Calibri、宋体，棕色标题 |
+
+Each has three corresponding sections (Overview, Goals, Schedule), second-level headings, one embedded PNG and a small table. Import all three into **Merge sections**, then click **Detect and regroup**. Or use **Try three examples** in the app.
+
+三份文档均含概述、目标、计划三个对应章节，包含二级标题、一张嵌入图片与一张表格。导入“按章节融合”后点击“重新识别与配对”，也可直接使用应用里的示例按钮。
+
+Expected output: three groups and nine cards; three navigation levels, three pictures, three tables when all cards are included. Figure and literal heading numbers are not automatically renumbered.
+
+Generate with Node.js 22.13+ after `npm ci`:
+
+```bash
+node scripts/generate-examples.mjs
+```
+
+Only these exact three filenames are allowed through `.gitignore`. Other local documents under `examples/` remain private and ignored. Put personal experiments in `tmp/` or another ignored directory; never force-add them.
